@@ -55,6 +55,9 @@ type Instance struct {
 	changeRoundChan       chan bool
 	stageChangedChans     []chan proto.RoundState
 	stageChangedChansLock sync.Mutex
+
+	// flags
+	stop bool
 }
 
 // NewInstance is the constructor of Instance
@@ -130,6 +133,12 @@ func (i *Instance) Start(inputValue []byte) {
 	i.triggerRoundChangeOnTimer()
 }
 
+func (i *Instance) Stop() {
+	i.stop = true
+	i.stopRoundChangeTimer()
+	i.Logger.Info("stopping iBFT instance...")
+}
+
 // Stage returns the instance message state
 func (i *Instance) Stage() proto.RoundState {
 	return i.State.Stage
@@ -183,6 +192,11 @@ func (i *Instance) StartEventLoop() {
 // Internal chan monitor if the instance reached decision or if a round change is required.
 func (i *Instance) StartMessagePipeline() {
 	for {
+		if i.stop {
+			i.Logger.Info("stopping iBFT message pipeline...")
+			break
+		}
+
 		processedMsg, err := i.ProcessMessage()
 		if err != nil {
 			i.Logger.Error("msg pipeline error", zap.Error(err))

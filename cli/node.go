@@ -132,11 +132,11 @@ var startNodeCmd = &cobra.Command{
 				// ssh
 				//"enr:-LK4QAkFwcROm9CByx3aabpd9Muqxwj8oQeqnr7vm8PAA8l1ZbDWVZTF_bosINKhN4QVRu5eLPtyGCccRPb3yKG2xjcBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpD1pf1CAAAAAP__________gmlkgnY0gmlwhArqAOOJc2VjcDI1NmsxoQMCphx1UQ1PkBsdOb-4FRiSWM4JE7HoDarAzOp82SO4s4N0Y3CCE4iDdWRwgg-g",
 			},
-			UDPPort:      udpPort,
-			TCPPort:      tcpPort,
-			TopicName:    validatorKey,
-			HostDNS:      hostDNS,
-			HostAddress:  hostAddress,
+			UDPPort:     udpPort,
+			TCPPort:     tcpPort,
+			TopicName:   validatorKey,
+			HostDNS:     hostDNS,
+			HostAddress: hostAddress,
 		}
 		network, err := p2p.New(cmd.Context(), logger, &cfg)
 		if err != nil {
@@ -184,6 +184,7 @@ var startNodeCmd = &cobra.Command{
 			Queue:           msgQ,
 			Consensus:       consensusType,
 			IBFT: ibft.New(
+				Logger.With(zap.String("ibft_instance", "attestations")),
 				inmem.New(),
 				&proto.Node{
 					IbftId: nodeID,

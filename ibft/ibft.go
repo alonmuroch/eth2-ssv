@@ -6,6 +6,7 @@ import (
 	"github.com/bloxapp/ssv/ibft/leader"
 	"github.com/bloxapp/ssv/ibft/valcheck"
 	"github.com/bloxapp/ssv/network/msgqueue"
+	"sync"
 
 	"go.uber.org/zap"
 
@@ -39,17 +40,21 @@ type IBFT interface {
 
 // ibftImpl implements IBFT interface
 type ibftImpl struct {
-	instances      map[string]*Instance // key is the instance identifier
-	storage        storage.Storage
-	me             *proto.Node
-	network        network.Network
-	msgQueue       *msgqueue.MessageQueue
-	params         *proto.InstanceParams
-	leaderSelector leader.Selector
+	instances       map[string]*Instance // key is the instance identifier
+	currentInstance *Instance
+	syncIbftMutex   sync.Locker
+	logger          *zap.Logger
+	storage         storage.Storage
+	me              *proto.Node
+	network         network.Network
+	msgQueue        *msgqueue.MessageQueue
+	params          *proto.InstanceParams
+	leaderSelector  leader.Selector
 }
 
 // New is the constructor of IBFT
 func New(
+	logger *zap.Logger,
 	storage storage.Storage,
 	me *proto.Node,
 	network network.Network,
@@ -58,6 +63,8 @@ func New(
 ) IBFT {
 	ret := &ibftImpl{
 		instances:      make(map[string]*Instance),
+		syncIbftMutex:  &sync.Mutex{},
+		logger:         logger,
 		storage:        storage,
 		me:             me,
 		network:        network,
@@ -70,6 +77,7 @@ func New(
 }
 
 func (i *ibftImpl) listenToNetworkMessages() {
+	//
 	msgChan := i.network.ReceivedMsgChan()
 	go func() {
 		for msg := range msgChan {
@@ -78,6 +86,22 @@ func (i *ibftImpl) listenToNetworkMessages() {
 				Msg:    msg,
 				Type:   network.IBFTBroadcastingType,
 			})
+		}
+	}()
+
+	//
+	decidedChan := i.network.ReceivedDecidedChan()
+	go func() {
+		for msg := range decidedChan {
+			// stop current instance
+			i.currentInstance.Stop()
+
+			// If received decided for current instance, let that instance play out.
+			// TODO - should we act upon this decided msg and not let it play out?
+			if bytes.Equal(i.currentInstance.State.Lambda, msg.Message.Lambda) {
+				continue
+			}
+			go i.SyncIBFT()
 		}
 	}()
 }
@@ -108,6 +132,7 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 	i.instances[hex.EncodeToString(opts.Identifier)] = newInstance
 	go newInstance.StartEventLoop()
 	go newInstance.StartMessagePipeline()
+	i.currentInstance = newInstance
 	stageChan := newInstance.GetStageChan()
 
 	err := i.resetLeaderSelection(opts.Identifier) // Important for deterministic leader selection
@@ -136,6 +161,7 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 			}
 			i.storage.SaveDecided(agg)
 			i.network.BroadcastDecided(agg)
+			i.currentInstance = nil
 			return true, len(agg.GetSignerIds()), agg.Message.Value
 		}
 	}
