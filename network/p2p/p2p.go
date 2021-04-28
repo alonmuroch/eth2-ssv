@@ -37,8 +37,9 @@ const (
 )
 
 type listener struct {
-	msgCh chan *proto.SignedMessage
-	sigCh chan *proto.SignedMessage
+	msgCh     chan *proto.SignedMessage
+	sigCh     chan *proto.SignedMessage
+	decidedCh chan *proto.SignedMessage
 }
 
 // p2pNetwork implements network.Network interface using P2P
@@ -54,7 +55,6 @@ type p2pNetwork struct {
 	host          p2pHost.Host
 	pubsub        *pubsub.PubSub
 }
-
 
 // New is the constructor of p2pNetworker
 func New(ctx context.Context, logger *zap.Logger, cfg *Config) (network.Network, error) {
@@ -199,7 +199,6 @@ func (n *p2pNetwork) GetTopic() *pubsub.Topic {
 	return n.cfg.Topic
 }
 
-
 // Broadcast propagates a signed message to all peers
 func (n *p2pNetwork) Broadcast(msg *proto.SignedMessage) error {
 	msgBytes, err := json.Marshal(network.Message{
@@ -255,6 +254,33 @@ func (n *p2pNetwork) ReceivedSignatureChan() <-chan *proto.SignedMessage {
 	return ls.sigCh
 }
 
+// BroadcastDecided broadcasts a decided instance with collected signatures
+func (n *p2pNetwork) BroadcastDecided(msg *proto.SignedMessage) error {
+	msgBytes, err := json.Marshal(network.Message{
+		Lambda: msg.Message.Lambda,
+		Msg:    msg,
+		Type:   network.DecidedBroadcastingType,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal message")
+	}
+
+	return n.cfg.Topic.Publish(n.ctx, msgBytes)
+}
+
+// ReceivedDecidedChan returns the channel for decided messages
+func (n *p2pNetwork) ReceivedDecidedChan() <-chan *proto.SignedMessage {
+	ls := listener{
+		decidedCh: make(chan *proto.SignedMessage, MsgChanSize),
+	}
+
+	n.listenersLock.Lock()
+	n.listeners = append(n.listeners, ls)
+	n.listenersLock.Unlock()
+
+	return ls.sigCh
+}
+
 // ReceivedMsgChan return a channel with messages
 func (n *p2pNetwork) listen() {
 	for {
@@ -288,6 +314,8 @@ func (n *p2pNetwork) listen() {
 						ls.msgCh <- cm.Msg
 					case network.SignatureBroadcastingType:
 						ls.sigCh <- cm.Msg
+					case network.DecidedBroadcastingType:
+						ls.decidedCh <- cm.Msg
 					}
 				}(ls)
 			}

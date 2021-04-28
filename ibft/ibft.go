@@ -135,6 +135,7 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 				return false, 0, nil
 			}
 			i.storage.SaveDecided(agg)
+			i.network.BroadcastDecided(agg)
 			return true, len(agg.GetSignerIds()), agg.Message.Value
 		}
 	}

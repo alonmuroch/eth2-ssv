@@ -8,6 +8,8 @@ type BroadcastingType int
 const (
 	// IBFTBroadcastingType are all iBFT related messages
 	IBFTBroadcastingType = iota + 1
+	// DecidedBroadcastingType is an iBFT specific message for broadcasting post consensus decided message with signatures
+	DecidedBroadcastingType
 	// SignatureBroadcastingType is an SSV node specific message for broadcasting post consensus signatures on eth2 duties
 	SignatureBroadcastingType
 )

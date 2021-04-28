@@ -19,5 +19,11 @@ type Network interface {
 	// ReceivedSignatureChan returns the channel with signatures
 	ReceivedSignatureChan() <-chan *proto.SignedMessage
 
+	// BroadcastDecided broadcasts a decided instance with collected signatures
+	BroadcastDecided(msg *proto.SignedMessage) error
+
+	// ReceivedDecidedChan returns the channel for decided messages
+	ReceivedDecidedChan() <-chan *proto.SignedMessage
+
 	GetTopic() *pubsub.Topic
 }

@@ -11,6 +11,7 @@ import (
 type Local struct {
 	msgC               []chan *proto.SignedMessage
 	sigC               []chan *proto.SignedMessage
+	decidedC           []chan *proto.SignedMessage
 	createChannelMutex sync.Mutex
 }
 
@@ -22,8 +23,9 @@ func (n *Local) GetTopic() *pubsub.Topic {
 // NewLocalNetwork creates a new instance of a local network
 func NewLocalNetwork() *Local {
 	return &Local{
-		msgC: make([]chan *proto.SignedMessage, 0),
-		sigC: make([]chan *proto.SignedMessage, 0),
+		msgC:     make([]chan *proto.SignedMessage, 0),
+		sigC:     make([]chan *proto.SignedMessage, 0),
+		decidedC: make([]chan *proto.SignedMessage, 0),
 	}
 }
 
@@ -81,101 +83,23 @@ func (n *Local) BroadcastSignature(msg *proto.SignedMessage) error {
 	return nil
 }
 
-//// Replay allows to script a precise scenario for every ibft node's behaviour each round
-//type Replay struct {
-//	Network *Local
-//	Storage storage.Storage
-//	scripts map[string]map[uint64]*RoundScript
-//	nodes   []uint64
-//}
-//
-//// NewReplay is the constructor of Replay
-//func NewReplay(nodes map[uint64]*proto.Node) *Replay {
-//	ret := &Replay{
-//		Network: NewLocalNetwork(),
-//		Storage: inmem.New(),
-//		scripts: make(map[string]map[uint64]*RoundScript),
-//		nodes:   make([]uint64, len(nodes)),
-//	}
-//	ret.Network.replay = ret
-//
-//	// set ids
-//	for _, v := range nodes {
-//		ret.nodes = append(ret.nodes, v.IbftId)
-//	}
-//
-//	return ret
-//}
-//
-//func (r *Replay) SetScript(identifier []byte, round uint64, script *RoundScript) {
-//	if r.scripts[hex.EncodeToString(identifier)] == nil {
-//		r.scripts[hex.EncodeToString(identifier)] = make(map[uint64]*RoundScript)
-//	}
-//	r.scripts[hex.EncodeToString(identifier)][round] = script
-//}
-//
-//// StartRound starts the given round
-//func (r *Replay) StartRound(identifier []byte, round uint64) *RoundScript {
-//	r.scripts[hex.EncodeToString(identifier)][round] = NewRoundScript(r, r.nodes)
-//	return r.scripts[hex.EncodeToString(identifier)][round]
-//}
-//
-//// CanSend returns true if message can be sent
-//func (r *Replay) CanSend(state proto.RoundState, identifier []byte, round uint64, node uint64) bool {
-//	if v, ok := r.scripts[hex.EncodeToString(identifier)][round]; ok {
-//		return v.CanSend(state, node)
-//	}
-//	return true
-//}
-//
-//// CanReceive returns true if the message can be received
-//func (r *Replay) CanReceive(state proto.RoundState, identifier []byte, round uint64, node uint64) bool {
-//	if v, ok := r.scripts[hex.EncodeToString(identifier)][round]; ok {
-//		return v.CanSend(state, node)
-//	}
-//	return true
-//}
-//
-//// RoundScript ...
-//type RoundScript struct {
-//	replay *Replay
-//	rules  map[proto.RoundState]map[uint64]bool // if true the node receives (and sends) all messages. False it doesn't
-//}
-//
-//// NewRoundScript is the constructor of RoundScript
-//func NewRoundScript(r *Replay, nodes []uint64) *RoundScript {
-//	rules := make(map[proto.RoundState]map[uint64]bool)
-//	for _, t := range []proto.RoundState{proto.RoundState_PrePrepare, proto.RoundState_Prepare, proto.RoundState_Commit, proto.RoundState_ChangeRound} {
-//		rules[t] = make(map[uint64]bool)
-//		for _, id := range nodes {
-//			rules[t][id] = true
-//		}
-//	}
-//	return &RoundScript{
-//		rules:  rules,
-//		replay: r,
-//	}
-//}
-//
-//// CanSend ...
-//func (r *RoundScript) CanSend(state proto.RoundState, node uint64) bool {
-//	return r.rules[state][node]
-//}
-//
-//// CanReceive ...
-//func (r *RoundScript) CanReceive(state proto.RoundState, node uint64) bool {
-//	return r.rules[state][node]
-//}
-//
-//// PreventMessages ...
-//func (r *RoundScript) PreventMessages(state proto.RoundState, nodes []uint64) *RoundScript {
-//	for _, id := range nodes {
-//		r.rules[state][id] = false
-//	}
-//	return r
-//}
-//
-//// EndRound ...
-//func (r *RoundScript) EndRound() *Replay {
-//	return r.replay
-//}
+// BroadcastDecided broadcasts a decided instance with collected signatures
+func (n *Local) BroadcastDecided(msg *proto.SignedMessage) error {
+	n.createChannelMutex.Lock()
+	go func() {
+		for _, c := range n.decidedC {
+			c <- msg
+		}
+		n.createChannelMutex.Unlock()
+	}()
+	return nil
+}
+
+// ReceivedDecidedChan returns the channel for decided messages
+func (n *Local) ReceivedDecidedChan() <-chan *proto.SignedMessage {
+	n.createChannelMutex.Lock()
+	defer n.createChannelMutex.Unlock()
+	c := make(chan *proto.SignedMessage)
+	n.decidedC = append(n.msgC, c)
+	return c
+}
