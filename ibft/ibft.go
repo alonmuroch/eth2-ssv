@@ -40,16 +40,16 @@ type IBFT interface {
 
 // ibftImpl implements IBFT interface
 type ibftImpl struct {
-	instances       map[string]*Instance // key is the instance identifier
-	currentInstance *Instance
-	syncIbftMutex   sync.Locker
-	logger          *zap.Logger
-	storage         storage.Storage
-	me              *proto.Node
-	network         network.Network
-	msgQueue        *msgqueue.MessageQueue
-	params          *proto.InstanceParams
-	leaderSelector  leader.Selector
+	instances           map[string]*Instance // key is the instance identifier
+	currentInstance     *Instance
+	currentInstanceLock sync.Locker
+	logger              *zap.Logger
+	storage             storage.Storage
+	me                  *proto.Node
+	network             network.Network
+	msgQueue            *msgqueue.MessageQueue
+	params              *proto.InstanceParams
+	leaderSelector      leader.Selector
 }
 
 // New is the constructor of IBFT
@@ -62,15 +62,15 @@ func New(
 	params *proto.InstanceParams,
 ) IBFT {
 	ret := &ibftImpl{
-		instances:      make(map[string]*Instance),
-		syncIbftMutex:  &sync.Mutex{},
-		logger:         logger,
-		storage:        storage,
-		me:             me,
-		network:        network,
-		msgQueue:       queue,
-		params:         params,
-		leaderSelector: &leader.Deterministic{},
+		instances:           make(map[string]*Instance),
+		currentInstanceLock: &sync.Mutex{},
+		logger:              logger,
+		storage:             storage,
+		me:                  me,
+		network:             network,
+		msgQueue:            queue,
+		params:              params,
+		leaderSelector:      &leader.Deterministic{},
 	}
 	ret.listenToNetworkMessages()
 	return ret
@@ -93,15 +93,7 @@ func (i *ibftImpl) listenToNetworkMessages() {
 	decidedChan := i.network.ReceivedDecidedChan()
 	go func() {
 		for msg := range decidedChan {
-			// stop current instance
-			i.currentInstance.Stop()
-
-			// If received decided for current instance, let that instance play out.
-			// TODO - should we act upon this decided msg and not let it play out?
-			if bytes.Equal(i.currentInstance.State.Lambda, msg.Message.Lambda) {
-				continue
-			}
-			go i.SyncIBFT()
+			i.ProcessDecidedMessage(msg)
 		}
 	}()
 }
@@ -147,21 +139,30 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 		switch stage := <-stageChan; stage {
 		// TODO - complete values
 		case proto.RoundState_Prepare:
+			i.currentInstanceLock.Lock()
+
 			agg, err := newInstance.PreparedAggregatedMsg()
 			if err != nil {
 				newInstance.Logger.Error("could not get aggregated prepare msg and save to storage", zap.Error(err))
 				return false, 0, nil
 			}
 			i.storage.SavePrepared(agg)
+
+			i.currentInstanceLock.Unlock()
 		case proto.RoundState_Decided:
+			i.currentInstanceLock.Lock()
+
 			agg, err := newInstance.CommittedAggregatedMsg()
 			if err != nil {
 				newInstance.Logger.Error("could not get aggregated commit msg and save to storage", zap.Error(err))
 				return false, 0, nil
 			}
 			i.storage.SaveDecided(agg)
+			i.storage.SaveHighestDecidedInstance(agg)
 			i.network.BroadcastDecided(agg)
 			i.currentInstance = nil
+
+			i.currentInstanceLock.Unlock()
 			return true, len(agg.GetSignerIds()), agg.Message.Value
 		}
 	}
