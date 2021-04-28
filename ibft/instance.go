@@ -133,6 +133,7 @@ func (i *Instance) Start(inputValue []byte) {
 	i.triggerRoundChangeOnTimer()
 }
 
+// Stop will trigger a stop for the entire instance
 func (i *Instance) Stop() {
 	i.stop = true
 	i.stopRoundChangeTimer()

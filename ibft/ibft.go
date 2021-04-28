@@ -159,7 +159,9 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 			}
 			i.storage.SaveDecided(agg)
 			i.storage.SaveHighestDecidedInstance(agg)
-			i.network.BroadcastDecided(agg)
+			if err := i.network.BroadcastDecided(agg); err != nil {
+				i.logger.Error("could not broadcast decided message", zap.Error(err))
+			}
 			i.currentInstance = nil
 
 			i.currentInstanceLock.Unlock()
