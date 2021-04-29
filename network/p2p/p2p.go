@@ -202,9 +202,9 @@ func (n *p2pNetwork) GetTopic() *pubsub.Topic {
 // Broadcast propagates a signed message to all peers
 func (n *p2pNetwork) Broadcast(msg *proto.SignedMessage) error {
 	msgBytes, err := json.Marshal(network.Message{
-		Lambda: msg.Message.Lambda,
-		Msg:    msg,
-		Type:   network.IBFTBroadcastingType,
+		Lambda:        msg.Message.Lambda,
+		SignedMessage: msg,
+		Type:          network.NetworkMsg_IBFTType,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")
@@ -230,9 +230,9 @@ func (n *p2pNetwork) ReceivedMsgChan() <-chan *proto.SignedMessage {
 // BroadcastSignature broadcasts the given signature for the given lambda
 func (n *p2pNetwork) BroadcastSignature(msg *proto.SignedMessage) error {
 	msgBytes, err := json.Marshal(network.Message{
-		Lambda: msg.Message.Lambda,
-		Msg:    msg,
-		Type:   network.SignatureBroadcastingType,
+		Lambda:        msg.Message.Lambda,
+		SignedMessage: msg,
+		Type:          network.NetworkMsg_SignatureType,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")
@@ -257,9 +257,9 @@ func (n *p2pNetwork) ReceivedSignatureChan() <-chan *proto.SignedMessage {
 // BroadcastDecided broadcasts a decided instance with collected signatures
 func (n *p2pNetwork) BroadcastDecided(msg *proto.SignedMessage) error {
 	msgBytes, err := json.Marshal(network.Message{
-		Lambda: msg.Message.Lambda,
-		Msg:    msg,
-		Type:   network.DecidedBroadcastingType,
+		Lambda:        msg.Message.Lambda,
+		SignedMessage: msg,
+		Type:          network.NetworkMsg_DecidedType,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")
@@ -310,12 +310,12 @@ func (n *p2pNetwork) listen() {
 				go func(ls listener) {
 
 					switch cm.Type {
-					case network.IBFTBroadcastingType:
-						ls.msgCh <- cm.Msg
-					case network.SignatureBroadcastingType:
-						ls.sigCh <- cm.Msg
-					case network.DecidedBroadcastingType:
-						ls.decidedCh <- cm.Msg
+					case network.NetworkMsg_IBFTType:
+						ls.msgCh <- cm.SignedMessage
+					case network.NetworkMsg_SignatureType:
+						ls.sigCh <- cm.SignedMessage
+					case network.NetworkMsg_DecidedType:
+						ls.decidedCh <- cm.SignedMessage
 					}
 				}(ls)
 			}

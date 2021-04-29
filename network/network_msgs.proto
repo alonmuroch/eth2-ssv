@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package network;
+
+option go_package = "github.com/bloxapp/ssv/network";
+
+import "msgs.proto";
+
+enum NetworkMsg {
+    // IBFTType are all iBFT related messages
+    IBFTType = 0;
+    // DecidedType is an iBFT specific message for broadcasting post consensus decided message with signatures
+    DecidedType = 1;
+    // SignatureType is an SSV node specific message for broadcasting post consensus signatures on eth2 duties
+    SignatureType = 2;
+}
+
+message SyncMessage {
+  bytes t = 1;
+}
+
+// Message is a wrapper struct for all network message types
+message Message {
+  bytes Lambda = 1;
+  proto.SignedMessage SignedMessage = 2;
+  NetworkMsg Type = 3;
+}

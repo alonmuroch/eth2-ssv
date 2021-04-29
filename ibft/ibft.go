@@ -82,9 +82,9 @@ func (i *ibftImpl) listenToNetworkMessages() {
 	go func() {
 		for msg := range msgChan {
 			i.msgQueue.AddMessage(&network.Message{
-				Lambda: msg.Message.Lambda,
-				Msg:    msg,
-				Type:   network.IBFTBroadcastingType,
+				Lambda:        msg.Message.Lambda,
+				SignedMessage: msg,
+				Type:          network.NetworkMsg_IBFTType,
 			})
 		}
 	}()

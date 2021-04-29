@@ -52,25 +52,25 @@ func (n *ssvNode) waitForSignatureCollection(
 			lock.Unlock()
 		}
 		if msg := n.queue.PopMessage(msgqueue.SigRoundIndexKey(identifier)); msg != nil {
-			if len(msg.Msg.SignerIds) == 0 { // no signer, empty sig
+			if len(msg.SignedMessage.SignerIds) == 0 { // no signer, empty sig
 				continue
 			}
-			if _, found := signatures[msg.Msg.SignerIds[0]]; found { // sig already exists
+			if _, found := signatures[msg.SignedMessage.SignerIds[0]]; found { // sig already exists
 				continue
 			}
 
-			logger.Info("collected valid signature", zap.Uint64("node_id", msg.Msg.SignerIds[0]), zap.Any("msg", msg))
+			logger.Info("collected valid signature", zap.Uint64("node_id", msg.SignedMessage.SignerIds[0]), zap.Any("msg", msg))
 
 			// verify sig
-			if err := n.verifyPartialSignature(msg.Msg.Signature, sigRoot, msg.Msg.SignerIds[0]); err != nil {
+			if err := n.verifyPartialSignature(msg.SignedMessage.Signature, sigRoot, msg.SignedMessage.SignerIds[0]); err != nil {
 				logger.Error("received invalid signature", zap.Error(err))
 				continue
 			}
-			logger.Info("collected valid signature", zap.Uint64("node_id", msg.Msg.SignerIds[0]))
+			logger.Info("collected valid signature", zap.Uint64("node_id", msg.SignedMessage.SignerIds[0]))
 
 			lock.Lock()
-			signatures[msg.Msg.SignerIds[0]] = msg.Msg.Signature
-			signedIndxes = append(signedIndxes, msg.Msg.SignerIds[0])
+			signatures[msg.SignedMessage.SignerIds[0]] = msg.SignedMessage.Signature
+			signedIndxes = append(signedIndxes, msg.SignedMessage.SignerIds[0])
 			if len(signedIndxes) >= signaturesCount {
 				done = true
 				break

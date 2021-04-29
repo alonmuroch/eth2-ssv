@@ -55,7 +55,7 @@ type ssvNode struct {
 	// timeouts
 	signatureCollectionTimeout time.Duration
 	// genesis epoch
-	phase1TestGenesis          uint64
+	phase1TestGenesis uint64
 }
 
 // New is the constructor of ssvNode
@@ -74,7 +74,7 @@ func New(opts Options) Node {
 		logger:                     opts.Logger,
 		signatureCollectionTimeout: opts.SignatureCollectionTimeout,
 		// genesis epoch
-		phase1TestGenesis:          opts.Phase1TestGenesis,
+		phase1TestGenesis: opts.Phase1TestGenesis,
 	}
 }
 
@@ -98,7 +98,7 @@ func (n *ssvNode) Start(ctx context.Context) error {
 			}
 
 			for _, slot := range slots {
-				if slot < n.getEpochFirstSlot(n.phase1TestGenesis){
+				if slot < n.getEpochFirstSlot(n.phase1TestGenesis) {
 					// wait until genesis epoch starts
 					n.logger.Debug("skipping slot, lower than genesis", zap.Uint64("genesis_slot", n.getEpochFirstSlot(n.phase1TestGenesis)), zap.Uint64("slot", slot))
 					continue
@@ -130,9 +130,9 @@ func (n *ssvNode) listenToNetworkMessages() {
 	sigChan := n.network.ReceivedSignatureChan()
 	for sigMsg := range sigChan {
 		n.queue.AddMessage(&network.Message{
-			Lambda: sigMsg.Message.Lambda,
-			Msg:    sigMsg,
-			Type:   network.SignatureBroadcastingType,
+			Lambda:        sigMsg.Message.Lambda,
+			SignedMessage: sigMsg,
+			Type:          network.NetworkMsg_SignatureType,
 		})
 	}
 }
