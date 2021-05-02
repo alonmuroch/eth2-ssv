@@ -3,6 +3,7 @@ package ibft
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"github.com/bloxapp/ssv/ibft/leader"
 	"github.com/bloxapp/ssv/ibft/valcheck"
 	"github.com/bloxapp/ssv/network/msgqueue"
@@ -77,7 +78,7 @@ func New(
 }
 
 func (i *ibftImpl) listenToNetworkMessages() {
-	//
+	// ibft messages
 	msgChan := i.network.ReceivedMsgChan()
 	go func() {
 		for msg := range msgChan {
@@ -89,7 +90,7 @@ func (i *ibftImpl) listenToNetworkMessages() {
 		}
 	}()
 
-	//
+	// decided messages
 	decidedChan := i.network.ReceivedDecidedChan()
 	go func() {
 		for msg := range decidedChan {
@@ -99,15 +100,8 @@ func (i *ibftImpl) listenToNetworkMessages() {
 }
 
 func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
-	// If previous instance didn't decide, can't start another instance.
-	if !bytes.Equal(opts.PrevInstance, FirstInstanceIdentifier()) {
-		instance, found := i.instances[hex.EncodeToString(opts.PrevInstance)]
-		if !found {
-			opts.Logger.Error("previous instance not found")
-		}
-		if instance.Stage() != proto.RoundState_Decided {
-			opts.Logger.Error("previous instance not decided, can't start new instance")
-		}
+	if err := i.canStartNewInstance(opts); err != nil {
+		opts.Logger.Error("can't start new iBFT instance", zap.Error(err))
 	}
 
 	newInstance := NewInstance(InstanceOptions{
@@ -168,6 +162,20 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 			return true, len(agg.GetSignerIds()), agg.Message.Value
 		}
 	}
+}
+
+func (i *ibftImpl) canStartNewInstance(opts StartOptions) error {
+	// If previous instance didn't decide, can't start another instance.
+	if !bytes.Equal(opts.PrevInstance, FirstInstanceIdentifier()) {
+		instance, found := i.instances[hex.EncodeToString(opts.PrevInstance)]
+		if !found {
+			return errors.New("previous instance not found")
+		}
+		if instance.Stage() != proto.RoundState_Decided {
+			return errors.New("previous instance not decided, can't start new instance")
+		}
+	}
+	return nil
 }
 
 // GetIBFTCommittee returns a map of the iBFT committee where the key is the member's id.
