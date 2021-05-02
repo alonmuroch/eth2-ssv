@@ -2,6 +2,7 @@ package network
 
 import (
 	"github.com/bloxapp/ssv/ibft/proto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
@@ -26,4 +27,11 @@ type Network interface {
 	ReceivedDecidedChan() <-chan *proto.SignedMessage
 
 	GetTopic() *pubsub.Topic
+
+	// BroadcastSyncMessage broadcasts a sync message to peers.
+	// If peer list is nil, broadcasts to all.
+	BroadcastSyncMessage(peers []peer.ID, msg *SyncMessage) error
+
+	// ReceivedSyncMsgChan returns the channel for sync messages
+	ReceivedSyncMsgChan() <-chan *SyncMessage
 }

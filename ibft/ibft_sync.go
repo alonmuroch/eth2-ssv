@@ -49,7 +49,7 @@ func (i *ibftImpl) ProcessDecidedMessage(msg *proto.SignedMessage) {
 	// If received decided for current instance, let that instance play out.
 	// otherwise sync
 	// TODO - should we act upon this decided msg and not let it play out?
-	if !bytes.Equal(i.currentInstance.State.Lambda, msg.Message.Lambda) {
+	if i.currentInstance == nil || !bytes.Equal(i.currentInstance.State.Lambda, msg.Message.Lambda) {
 		// stop current instance
 		i.currentInstance.Stop()
 
