@@ -1,6 +1,8 @@
 package local
 
 import (
+	"github.com/bloxapp/ssv/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"sync"
 
@@ -12,6 +14,7 @@ type Local struct {
 	msgC               []chan *proto.SignedMessage
 	sigC               []chan *proto.SignedMessage
 	decidedC           []chan *proto.SignedMessage
+	syncC              []chan *network.SyncMessage
 	createChannelMutex sync.Mutex
 }
 
@@ -50,20 +53,7 @@ func (n *Local) ReceivedSignatureChan() <-chan *proto.SignedMessage {
 // Broadcast implements network.Local interface
 func (n *Local) Broadcast(signed *proto.SignedMessage) error {
 	go func() {
-
-		// verify node is not prevented from sending msgs
-		//for _, id := range signed.SignerIds {
-		//	if !n.replay.CanSend(signed.Message.Type, signed.Message.Lambda, signed.Message.Round, id) {
-		//		return
-		//	}
-		//}
-
 		for _, c := range n.msgC {
-			//if !n.replay.CanReceive(signed.Message.Type, signed.Message.Lambda, signed.Message.Round, i) {
-			//	fmt.Printf("can't receive, node %d, lambda %s\n", i, hex.EncodeToString(signed.Message.Lambda))
-			//	continue
-			//}
-
 			c <- signed
 		}
 	}()
@@ -100,6 +90,28 @@ func (n *Local) ReceivedDecidedChan() <-chan *proto.SignedMessage {
 	n.createChannelMutex.Lock()
 	defer n.createChannelMutex.Unlock()
 	c := make(chan *proto.SignedMessage)
-	n.decidedC = append(n.msgC, c)
+	n.decidedC = append(n.decidedC, c)
+	return c
+}
+
+// BroadcastSyncMessage broadcasts a sync message to peers.
+// If peer list is nil, broadcasts to all.
+func (n *Local) BroadcastSyncMessage(peers []peer.ID, msg *network.SyncMessage) error {
+	n.createChannelMutex.Lock()
+	go func() {
+		for _, c := range n.syncC {
+			c <- msg
+		}
+		n.createChannelMutex.Unlock()
+	}()
+	return nil
+}
+
+// ReceivedSyncMsgChan returns the channel for sync messages
+func (n *Local) ReceivedSyncMsgChan() <-chan *network.SyncMessage {
+	n.createChannelMutex.Lock()
+	defer n.createChannelMutex.Unlock()
+	c := make(chan *network.SyncMessage)
+	n.syncC = append(n.syncC, c)
 	return c
 }

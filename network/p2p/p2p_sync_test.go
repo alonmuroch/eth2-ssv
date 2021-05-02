@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"sync"
 	"testing"
 	"time"
 )
@@ -51,22 +52,30 @@ func TestSyncMessageBroadcasting(t *testing.T) {
 	peer1Chan := peer1.ReceivedSyncMsgChan()
 	peer2Chan := peer2.ReceivedSyncMsgChan()
 
+	peer1Sync := sync.Mutex{}
 	peer1Verified := false
 	go func() {
 		msgFromPeer1 := <-peer1Chan
 		require.IsType(t, network.SyncMessage{}, *msgFromPeer1)
 		require.EqualValues(t, peer2.(*p2pNetwork).host.ID().String(), msgFromPeer1.FromPeerID)
 		require.EqualValues(t, network.Sync_GetHighestType, msgFromPeer1.Type)
+
+		peer1Sync.Lock()
 		peer1Verified = true
+		peer1Sync.Unlock()
 	}()
 
+	peer2Sync := sync.Mutex{}
 	peer2Verified := false
 	go func() {
 		msgFromPeer2 := <-peer2Chan
 		require.IsType(t, network.SyncMessage{}, *msgFromPeer2)
 		require.EqualValues(t, peer1.(*p2pNetwork).host.ID().String(), msgFromPeer2.FromPeerID)
 		require.EqualValues(t, network.Sync_GetHighestType, msgFromPeer2.Type)
+
+		peer2Sync.Lock()
 		peer2Verified = true
+		peer2Sync.Unlock()
 
 		broadcastSyncMsg(t, peer2, peer1)
 	}()
@@ -75,6 +84,10 @@ func TestSyncMessageBroadcasting(t *testing.T) {
 	time.Sleep(time.Millisecond * 300) // important to let msgs propagate
 
 	// verify
+	peer1Sync.Lock()
 	require.True(t, peer1Verified, "did not verify peer 1 streamed msg")
+	peer1Sync.Unlock()
+	peer2Sync.Lock()
 	require.True(t, peer2Verified, "did not verify peer 2 streamed msg")
+	peer2Sync.Unlock()
 }
