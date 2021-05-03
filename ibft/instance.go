@@ -81,7 +81,7 @@ func NewInstance(opts InstanceOptions) *Instance {
 		ValueCheck:     opts.ValueCheck,
 		LeaderSelector: opts.LeaderSelector,
 		Params:         opts.Params,
-		Logger:         opts.Logger.With(zap.Uint64("node_id", opts.Me.IbftId)),
+		Logger:         opts.Logger.With(zap.Uint64("node_id", opts.Me.IbftId), zap.Uint64("seq_num", opts.SeqNumber)),
 		msgLock:        sync.Mutex{},
 
 		MsgQueue:            opts.Queue,
