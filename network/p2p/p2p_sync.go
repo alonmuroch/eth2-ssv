@@ -14,7 +14,7 @@ import (
 // returns a stream closed for writing
 func (n *p2pNetwork) sendSyncMessage(stream core.Stream, peers []peer.ID, msg *network.SyncMessage) (core.Stream, error) {
 	if stream == nil {
-		if peers == nil || len(peers) == 0 {
+		if len(peers) == 0 {
 			return nil, errors.New("peer list is empty or nil")
 		}
 
@@ -34,11 +34,11 @@ func (n *p2pNetwork) sendSyncMessage(stream core.Stream, peers []peer.ID, msg *n
 		return nil, errors.Wrap(err, "failed to marshal message")
 	}
 
-	if _, e := stream.Write(msgBytes); e != nil {
-		err = e
+	if _, err := stream.Write(msgBytes); err != nil {
+		return nil, errors.Wrap(err, "could not write to stream")
 	}
-	if e := stream.CloseWrite(); err != nil {
-		err = e
+	if err := stream.CloseWrite(); err != nil {
+		return nil, errors.Wrap(err, "could not close write stream")
 	}
 	return stream, nil
 }

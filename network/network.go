@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+// SyncChanObj is a wrapper object for streaming of sync messages
 type SyncChanObj struct {
 	Msg    *SyncMessage
 	Stream core.Stream
