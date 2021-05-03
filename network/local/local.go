@@ -2,6 +2,7 @@ package local
 
 import (
 	"github.com/bloxapp/ssv/network"
+	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"sync"
 
@@ -13,7 +14,7 @@ type Local struct {
 	msgC               []chan *proto.SignedMessage
 	sigC               []chan *proto.SignedMessage
 	decidedC           []chan *proto.SignedMessage
-	syncC              []chan *network.SyncMessage
+	syncC              []chan *network.SyncChanObj
 	createChannelMutex sync.Mutex
 }
 
@@ -23,6 +24,7 @@ func NewLocalNetwork() *Local {
 		msgC:     make([]chan *proto.SignedMessage, 0),
 		sigC:     make([]chan *proto.SignedMessage, 0),
 		decidedC: make([]chan *proto.SignedMessage, 0),
+		syncC:    make([]chan *network.SyncChanObj, 0),
 	}
 }
 
@@ -91,21 +93,33 @@ func (n *Local) ReceivedDecidedChan() <-chan *proto.SignedMessage {
 // BroadcastSyncMessage broadcasts a sync message to peers.
 // If peer list is nil, broadcasts to all.
 func (n *Local) BroadcastSyncMessage(peers []peer.ID, msg *network.SyncMessage) error {
-	n.createChannelMutex.Lock()
-	go func() {
-		for _, c := range n.syncC {
-			c <- msg
-		}
-		n.createChannelMutex.Unlock()
-	}()
-	return nil
+	//n.createChannelMutex.Lock()
+	//go func() {
+	//	for _, c := range n.syncC {
+	//		c <- msg
+	//	}
+	//	n.createChannelMutex.Unlock()
+	//}()
+	//return nil
+	panic("implement")
+}
+
+// GetHighestDecidedInstance sends a highest decided request to peers and returns answers.
+// If peer list is nil, broadcasts to all.
+func (n *Local) GetHighestDecidedInstance(peers []peer.ID, msg *network.SyncMessage) (*network.Message, error) {
+	panic("implement")
+}
+
+// RespondToHighestDecidedInstance responds to a GetHighestDecidedInstance
+func (n *Local) RespondToHighestDecidedInstance(stream core.Stream, msg *network.SyncMessage) error {
+	panic("implement")
 }
 
 // ReceivedSyncMsgChan returns the channel for sync messages
-func (n *Local) ReceivedSyncMsgChan() <-chan *network.SyncMessage {
+func (n *Local) ReceivedSyncMsgChan() <-chan *network.SyncChanObj {
 	n.createChannelMutex.Lock()
 	defer n.createChannelMutex.Unlock()
-	c := make(chan *network.SyncMessage)
+	c := make(chan *network.SyncChanObj)
 	n.syncC = append(n.syncC, c)
 	return c
 }

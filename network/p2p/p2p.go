@@ -193,7 +193,7 @@ func New(ctx context.Context, logger *zap.Logger, cfg *Config) (network.Network,
 	n.handleStream()
 
 	runutil.RunEvery(n.ctx, 1*time.Minute, func() {
-		n.logger.Info("Current peers status", zap.Any("peers", n.GetTopic().ListPeers()))
+		n.logger.Info("Current peers status", zap.Any("peers", n.pubsub.ListPeers(n.cfg.Topic.String())))
 	})
 
 	return n, nil
