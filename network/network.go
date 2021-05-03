@@ -4,7 +4,6 @@ import (
 	"github.com/bloxapp/ssv/ibft/proto"
 	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type SyncChanObj struct {
@@ -31,8 +30,6 @@ type Network interface {
 
 	// ReceivedDecidedChan returns the channel for decided messages
 	ReceivedDecidedChan() <-chan *proto.SignedMessage
-
-	GetTopic() *pubsub.Topic
 
 	// GetHighestDecidedInstance sends a highest decided request to peers and returns answers.
 	// If peer list is nil, broadcasts to all.

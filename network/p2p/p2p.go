@@ -199,10 +199,6 @@ func New(ctx context.Context, logger *zap.Logger, cfg *Config) (network.Network,
 	return n, nil
 }
 
-func (n *p2pNetwork) GetTopic() *pubsub.Topic {
-	return n.cfg.Topic
-}
-
 // ReceivedMsgChan return a channel with messages
 func (n *p2pNetwork) listen() {
 	for {

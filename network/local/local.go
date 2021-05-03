@@ -3,7 +3,6 @@ package local
 import (
 	"github.com/bloxapp/ssv/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"sync"
 
 	"github.com/bloxapp/ssv/ibft/proto"
@@ -16,11 +15,6 @@ type Local struct {
 	decidedC           []chan *proto.SignedMessage
 	syncC              []chan *network.SyncMessage
 	createChannelMutex sync.Mutex
-}
-
-// GetTopic TBD
-func (n *Local) GetTopic() *pubsub.Topic {
-	panic("implement me")
 }
 
 // NewLocalNetwork creates a new instance of a local network
