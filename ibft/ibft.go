@@ -1,9 +1,6 @@
 package ibft
 
 import (
-	"bytes"
-	"encoding/hex"
-	"errors"
 	"github.com/bloxapp/ssv/ibft/leader"
 	"github.com/bloxapp/ssv/ibft/valcheck"
 	"github.com/bloxapp/ssv/network/msgqueue"
@@ -35,13 +32,17 @@ type IBFT interface {
 	// StartInstance starts a new instance by the given options
 	StartInstance(opts StartOptions) (bool, int, []byte)
 
+	// NextSeqNumber returns the previous decided instance seq number + 1
+	// In case it's the first instance it returns 0
+	NextSeqNumber() uint64
+
 	// GetIBFTCommittee returns a map of the iBFT committee where the key is the member's id.
 	GetIBFTCommittee() map[uint64]*proto.Node
 }
 
 // ibftImpl implements IBFT interface
 type ibftImpl struct {
-	instances           map[string]*Instance // key is the instance identifier
+	instances           []*Instance // instance index is also the sequence number
 	currentInstance     *Instance
 	currentInstanceLock sync.Locker
 	logger              *zap.Logger
@@ -63,7 +64,7 @@ func New(
 	params *proto.InstanceParams,
 ) IBFT {
 	ret := &ibftImpl{
-		instances:           make(map[string]*Instance),
+		instances:           make([]*Instance, 0),
 		currentInstanceLock: &sync.Mutex{},
 		logger:              logger,
 		storage:             storage,
@@ -100,22 +101,14 @@ func (i *ibftImpl) listenToNetworkMessages() {
 }
 
 func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
-	if err := i.canStartNewInstance(opts); err != nil {
+	instanceOpts := i.instanceOptionsFromStartOptions(opts)
+
+	if err := i.canStartNewInstance(instanceOpts); err != nil {
 		opts.Logger.Error("can't start new iBFT instance", zap.Error(err))
 	}
 
-	newInstance := NewInstance(InstanceOptions{
-		Logger:         opts.Logger,
-		Me:             i.me,
-		Network:        i.network,
-		Queue:          i.msgQueue,
-		ValueCheck:     opts.ValueCheck,
-		LeaderSelector: i.leaderSelector,
-		Params:         i.params,
-		Lambda:         opts.Identifier,
-		PreviousLambda: opts.PrevInstance,
-	})
-	i.instances[hex.EncodeToString(opts.Identifier)] = newInstance
+	newInstance := NewInstance(instanceOpts)
+	i.instances = append(i.instances, newInstance)
 	go newInstance.StartEventLoop()
 	go newInstance.StartMessagePipeline()
 	i.currentInstance = newInstance
@@ -162,20 +155,6 @@ func (i *ibftImpl) StartInstance(opts StartOptions) (bool, int, []byte) {
 			return true, len(agg.GetSignerIds()), agg.Message.Value
 		}
 	}
-}
-
-func (i *ibftImpl) canStartNewInstance(opts StartOptions) error {
-	// If previous instance didn't decide, can't start another instance.
-	if !bytes.Equal(opts.PrevInstance, FirstInstanceIdentifier()) {
-		instance, found := i.instances[hex.EncodeToString(opts.PrevInstance)]
-		if !found {
-			return errors.New("previous instance not found")
-		}
-		if instance.Stage() != proto.RoundState_Decided {
-			return errors.New("previous instance not decided, can't start new instance")
-		}
-	}
-	return nil
 }
 
 // GetIBFTCommittee returns a map of the iBFT committee where the key is the member's id.
