@@ -2,9 +2,15 @@ package network
 
 import (
 	"github.com/bloxapp/ssv/ibft/proto"
+	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
+
+type SyncChanObj struct {
+	Msg    *SyncMessage
+	Stream core.Stream
+}
 
 // Network represents the behavior of the network
 type Network interface {
@@ -28,10 +34,13 @@ type Network interface {
 
 	GetTopic() *pubsub.Topic
 
-	// BroadcastSyncMessage broadcasts a sync message to peers.
+	// GetHighestDecidedInstance sends a highest decided request to peers and returns answers.
 	// If peer list is nil, broadcasts to all.
-	BroadcastSyncMessage(peers []peer.ID, msg *SyncMessage) error
+	GetHighestDecidedInstance(peers []peer.ID, msg *SyncMessage) (*Message, error)
+
+	// RespondToHighestDecidedInstance responds to a GetHighestDecidedInstance
+	RespondToHighestDecidedInstance(stream core.Stream, msg *SyncMessage) error
 
 	// ReceivedSyncMsgChan returns the channel for sync messages
-	ReceivedSyncMsgChan() <-chan *SyncMessage
+	ReceivedSyncMsgChan() <-chan *SyncChanObj
 }

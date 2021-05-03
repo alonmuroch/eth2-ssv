@@ -42,7 +42,7 @@ type listener struct {
 	msgCh     chan *proto.SignedMessage
 	sigCh     chan *proto.SignedMessage
 	decidedCh chan *proto.SignedMessage
-	syncCh    chan *network.SyncMessage
+	syncCh    chan *network.SyncChanObj
 }
 
 // p2pNetwork implements network.Network interface using P2P

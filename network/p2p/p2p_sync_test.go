@@ -3,27 +3,13 @@ package p2p
 import (
 	"context"
 	"github.com/bloxapp/ssv/network"
+	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
-	"sync"
 	"testing"
 	"time"
 )
-
-func broadcastSyncMsg(t *testing.T, broadcaster network.Network, receiver network.Network) {
-	messageToBroadcast := &network.SyncMessage{
-		SignedMessages: nil,
-		Type:           network.Sync_GetHighestType,
-	}
-
-	time.Sleep(time.Millisecond * 100) // important to let nodes reach each other
-	err := broadcaster.BroadcastSyncMessage([]peer.ID{
-		receiver.(*p2pNetwork).host.ID(),
-	}, messageToBroadcast)
-	require.NoError(t, err)
-	time.Sleep(time.Millisecond * 100)
-}
 
 func TestSyncMessageBroadcasting(t *testing.T) {
 	logger := zaptest.NewLogger(t)
@@ -49,45 +35,45 @@ func TestSyncMessageBroadcasting(t *testing.T) {
 	require.NoError(t, err)
 
 	// set receivers
-	peer1Chan := peer1.ReceivedSyncMsgChan()
 	peer2Chan := peer2.ReceivedSyncMsgChan()
 
-	peer1Sync := sync.Mutex{}
-	peer1Verified := false
+	var receivedStream core.Stream
 	go func() {
-		msgFromPeer1 := <-peer1Chan
-		require.IsType(t, network.SyncMessage{}, *msgFromPeer1)
-		require.EqualValues(t, peer2.(*p2pNetwork).host.ID().String(), msgFromPeer1.FromPeerID)
-		require.EqualValues(t, network.Sync_GetHighestType, msgFromPeer1.Type)
+		msgFromPeer1 := <-peer2Chan
+		require.IsType(t, network.SyncMessage{}, *msgFromPeer1.Msg)
+		require.EqualValues(t, peer1.(*p2pNetwork).host.ID().String(), msgFromPeer1.Msg.FromPeerID)
+		require.EqualValues(t, network.Sync_GetHighestType, msgFromPeer1.Msg.Type)
 
-		peer1Sync.Lock()
-		peer1Verified = true
-		peer1Sync.Unlock()
+		receivedStream = msgFromPeer1.Stream
+
+		messageToBroadcast := &network.SyncMessage{
+			SignedMessages: nil,
+			Type:           network.Sync_GetHighestType,
+		}
+		require.NoError(t, peer2.RespondToHighestDecidedInstance(msgFromPeer1.Stream, messageToBroadcast))
 	}()
 
-	peer2Sync := sync.Mutex{}
-	peer2Verified := false
-	go func() {
-		msgFromPeer2 := <-peer2Chan
-		require.IsType(t, network.SyncMessage{}, *msgFromPeer2)
-		require.EqualValues(t, peer1.(*p2pNetwork).host.ID().String(), msgFromPeer2.FromPeerID)
-		require.EqualValues(t, network.Sync_GetHighestType, msgFromPeer2.Type)
+	// broadcast msg
+	messageToBroadcast := &network.SyncMessage{
+		SignedMessages: nil,
+		Type:           network.Sync_GetHighestType,
+	}
 
-		peer2Sync.Lock()
-		peer2Verified = true
-		peer2Sync.Unlock()
-
-		broadcastSyncMsg(t, peer2, peer1)
-	}()
-
-	broadcastSyncMsg(t, peer1, peer2)
-	time.Sleep(time.Millisecond * 300) // important to let msgs propagate
+	time.Sleep(time.Millisecond * 500) // important to let nodes reach each other
+	res, err := peer1.GetHighestDecidedInstance([]peer.ID{
+		peer2.(*p2pNetwork).host.ID(),
+	}, messageToBroadcast)
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond * 100)
 
 	// verify
-	peer1Sync.Lock()
-	require.True(t, peer1Verified, "did not verify peer 1 streamed msg")
-	peer1Sync.Unlock()
-	peer2Sync.Lock()
-	require.True(t, peer2Verified, "did not verify peer 2 streamed msg")
-	peer2Sync.Unlock()
+	require.NotNil(t, res)
+	require.IsType(t, network.SyncMessage{}, *res.SyncMessage)
+	require.EqualValues(t, peer2.(*p2pNetwork).host.ID().String(), res.SyncMessage.FromPeerID)
+	require.EqualValues(t, network.Sync_GetHighestType, res.SyncMessage.Type)
+
+	// verify stream closed
+	require.NotNil(t, receivedStream)
+	_, err = receivedStream.Write([]byte{1})
+	require.EqualError(t, err, "stream closed")
 }
