@@ -3,27 +3,8 @@ package ibft
 import (
 	"bytes"
 	"github.com/bloxapp/ssv/ibft/proto"
+	"github.com/bloxapp/ssv/ibft/sync"
 )
-
-// SyncIBFT is responsible for syncing and iBFT instance when needed by
-// fetching decided messages from the network
-type SyncIBFT struct {
-}
-
-// Start the sync
-func (sync *SyncIBFT) Start() {
-	panic("implement SyncIBFT")
-}
-
-// FindHighestInstance returns the highest found instance identifier found by asking the P2P network
-func (sync *SyncIBFT) FindHighestInstance() []byte {
-	return nil
-}
-
-// FetchValidateAndSaveInstances fetches, validates and saves decided messages from the P2P network.
-func (sync *SyncIBFT) FetchValidateAndSaveInstances(startID []byte, endID []byte) {
-
-}
 
 // ProcessDecidedMessage is responsible for processing an incoming decided message.
 // If the decided message is known or belong to the current executing instance, do nothing.
@@ -54,7 +35,7 @@ func (i *ibftImpl) ProcessDecidedMessage(msg *proto.SignedMessage) {
 		i.currentInstance.Stop()
 
 		// sync
-		s := &SyncIBFT{}
+		s := sync.New(i.network)
 		go s.Start()
 	}
 }
