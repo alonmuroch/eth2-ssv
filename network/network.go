@@ -2,14 +2,31 @@ package network
 
 import (
 	"github.com/bloxapp/ssv/ibft/proto"
-	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"io"
 )
 
 // SyncChanObj is a wrapper object for streaming of sync messages
 type SyncChanObj struct {
 	Msg    *SyncMessage
-	Stream core.Stream
+	Stream SyncStream
+}
+
+// SyncStream is a interface for all stream related functions for the sync process.
+type SyncStream interface {
+	io.Reader
+	io.Writer
+	io.Closer
+
+	// CloseWrite closes the stream for writing but leaves it open for
+	// reading.
+	//
+	// CloseWrite does not free the stream, users must still call Close or
+	// Reset.
+	CloseWrite() error
+
+	// RemotePeer returns a string identifier of the remote peer connected to this stream
+	RemotePeer() string
 }
 
 // Network represents the behavior of the network
@@ -37,7 +54,7 @@ type Network interface {
 	GetHighestDecidedInstance(peers []peer.ID, msg *SyncMessage) (*Message, error)
 
 	// RespondToHighestDecidedInstance responds to a GetHighestDecidedInstance
-	RespondToHighestDecidedInstance(stream core.Stream, msg *SyncMessage) error
+	RespondToHighestDecidedInstance(stream SyncStream, msg *SyncMessage) error
 
 	// ReceivedSyncMsgChan returns the channel for sync messages
 	ReceivedSyncMsgChan() <-chan *SyncChanObj

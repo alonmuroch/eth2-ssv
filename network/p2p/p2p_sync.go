@@ -3,7 +3,6 @@ package p2p
 import (
 	"encoding/json"
 	"github.com/bloxapp/ssv/network"
-	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -12,7 +11,7 @@ import (
 // BroadcastSyncMessage broadcasts a sync message to peers.
 // Peer list must not be nil or empty if stream is nil.
 // returns a stream closed for writing
-func (n *p2pNetwork) sendSyncMessage(stream core.Stream, peers []peer.ID, msg *network.SyncMessage) (core.Stream, error) {
+func (n *p2pNetwork) sendSyncMessage(stream network.SyncStream, peers []peer.ID, msg *network.SyncMessage) (network.SyncStream, error) {
 	if stream == nil {
 		if len(peers) == 0 {
 			return nil, errors.New("peer list is empty or nil")
@@ -22,7 +21,7 @@ func (n *p2pNetwork) sendSyncMessage(stream core.Stream, peers []peer.ID, msg *n
 		if err != nil {
 			return nil, err
 		}
-		stream = s
+		stream = &SyncStream{stream: s}
 	}
 
 	// message to bytes
@@ -67,7 +66,7 @@ func (n *p2pNetwork) GetHighestDecidedInstance(peers []peer.ID, msg *network.Syn
 }
 
 // RespondToHighestDecidedInstance responds to a GetHighestDecidedInstance
-func (n *p2pNetwork) RespondToHighestDecidedInstance(stream core.Stream, msg *network.SyncMessage) error {
+func (n *p2pNetwork) RespondToHighestDecidedInstance(stream network.SyncStream, msg *network.SyncMessage) error {
 	msg.FromPeerID = n.host.ID().String()
 	_, err := n.sendSyncMessage(stream, nil, msg)
 	return err

@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"github.com/bloxapp/ssv/network"
-	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -37,7 +36,7 @@ func TestSyncMessageBroadcasting(t *testing.T) {
 	// set receivers
 	peer2Chan := peer2.ReceivedSyncMsgChan()
 
-	var receivedStream core.Stream
+	var receivedStream network.SyncStream
 	go func() {
 		msgFromPeer1 := <-peer2Chan
 		require.IsType(t, network.SyncMessage{}, *msgFromPeer1.Msg)
