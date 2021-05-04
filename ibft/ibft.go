@@ -54,7 +54,7 @@ type ibftImpl struct {
 	leaderSelector      leader.Selector
 }
 
-// New is the constructor of IBFT
+// NewHistorySync is the constructor of IBFT
 func New(
 	logger *zap.Logger,
 	storage storage.Storage,
@@ -96,6 +96,14 @@ func (i *ibftImpl) listenToNetworkMessages() {
 	go func() {
 		for msg := range decidedChan {
 			i.ProcessDecidedMessage(msg)
+		}
+	}()
+
+	// sync messages
+	syncChan := i.network.ReceivedSyncMsgChan()
+	go func() {
+		for msg := range syncChan {
+			i.ProcessSyncMessage(msg)
 		}
 	}()
 }

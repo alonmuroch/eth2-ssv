@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/bloxapp/ssv/ibft/proto"
 	"github.com/bloxapp/ssv/ibft/sync"
+	"github.com/bloxapp/ssv/network"
 )
 
 // ProcessDecidedMessage is responsible for processing an incoming decided message.
@@ -35,7 +36,12 @@ func (i *ibftImpl) ProcessDecidedMessage(msg *proto.SignedMessage) {
 		i.currentInstance.Stop()
 
 		// sync
-		s := sync.New(i.network)
+		s := sync.NewHistorySync(i.network)
 		go s.Start()
 	}
+}
+
+func (i *ibftImpl) ProcessSyncMessage(msg *network.SyncChanObj) {
+	s := sync.NewReqHandler(i.logger, i.network, i.storage)
+	go s.Process(msg)
 }
