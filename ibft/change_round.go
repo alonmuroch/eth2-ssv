@@ -18,7 +18,8 @@ func (i *Instance) changeRoundMsgPipeline() pipeline.Pipeline {
 	return pipeline.Combine(
 		auth.MsgTypeCheck(proto.RoundState_ChangeRound),
 		auth.ValidateLambdas(i.State),
-		auth.ValidateRound(i.State), // TODO - should we validate round? or maybe just higher round?
+		auth.ValidateRound(i.State),
+		auth.ValidateSeqNumber(i.State),
 		auth.AuthorizeMsg(i.Params),
 		changeround.Validate(i.Params),
 		changeround.AddChangeRoundMessage(i.Logger, i.ChangeRoundMessages, i.State),
@@ -173,16 +174,10 @@ func (i *Instance) uponChangeRoundTrigger() {
 	i.triggerRoundChangeOnTimer()
 
 	// broadcast round change
-	data, err := i.roundChangeInputValue()
+	broadcastMsg, err := i.generateChangeRoundMessage()
 	if err != nil {
-		i.Logger.Error("failed to create round change data for round", zap.Uint64("round", i.State.Round), zap.Error(err))
-	}
-	broadcastMsg := &proto.Message{
-		Type:           proto.RoundState_ChangeRound,
-		Round:          i.State.Round,
-		Lambda:         i.State.Lambda,
-		PreviousLambda: i.State.PreviousLambda,
-		Value:          data,
+		i.Logger.Error("failed to create round change message", zap.Uint64("round", i.State.Round), zap.Error(err))
+		return
 	}
 	if err := i.SignAndBroadcast(broadcastMsg); err != nil {
 		i.Logger.Error("could not broadcast round change message", zap.Error(err))
@@ -221,4 +216,20 @@ func highestPrepared(round uint64, container msgcont.MessageContainer) (allNonPr
 		}
 	}
 	return allNonPrepared, changeData, nil
+}
+
+func (i *Instance) generateChangeRoundMessage() (*proto.Message, error) {
+	data, err := i.roundChangeInputValue()
+	if err != nil {
+		i.Logger.Error("failed to create round change data for round", zap.Uint64("round", i.State.Round), zap.Error(err))
+		return nil, err
+	}
+	return &proto.Message{
+		Type:           proto.RoundState_ChangeRound,
+		Round:          i.State.Round,
+		Lambda:         i.State.Lambda,
+		SeqNumber:      i.State.SeqNumber,
+		PreviousLambda: i.State.PreviousLambda,
+		Value:          data,
+	}, nil
 }

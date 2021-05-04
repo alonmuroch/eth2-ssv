@@ -54,7 +54,7 @@ type ibftImpl struct {
 	leaderSelector      leader.Selector
 }
 
-// NewHistorySync is the constructor of IBFT
+// New is the constructor of IBFT
 func New(
 	logger *zap.Logger,
 	storage storage.Storage,
