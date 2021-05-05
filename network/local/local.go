@@ -2,7 +2,6 @@ package local
 
 import (
 	"github.com/bloxapp/ssv/network"
-	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"sync"
 
@@ -111,7 +110,7 @@ func (n *Local) GetHighestDecidedInstance(peers []peer.ID, msg *network.SyncMess
 }
 
 // RespondToHighestDecidedInstance responds to a GetHighestDecidedInstance
-func (n *Local) RespondToHighestDecidedInstance(stream core.Stream, msg *network.SyncMessage) error {
+func (n *Local) RespondToHighestDecidedInstance(stream network.SyncStream, msg *network.SyncMessage) error {
 	panic("implement")
 }
 
