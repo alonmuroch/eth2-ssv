@@ -1,17 +1,15 @@
 package sync
 
 import (
-	"encoding/json"
 	"github.com/bloxapp/ssv/ibft/proto"
 	"github.com/bloxapp/ssv/network"
-	core "github.com/libp2p/go-libp2p-core"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 type testNetwork struct {
-	t *testing.T
+	t                      *testing.T
+	highestDecidedReceived *proto.SignedMessage
 }
 
 func NewTestNetwork(t *testing.T) *testNetwork {
@@ -46,12 +44,8 @@ func (n *testNetwork) GetHighestDecidedInstance(peers []peer.ID, msg *network.Sy
 	return nil, nil
 }
 
-func (n *testNetwork) RespondToHighestDecidedInstance(stream core.Stream, msg *network.SyncMessage) error {
-	byts, err := json.Marshal(msg)
-	require.NoError(n.t, err)
-
-	_, err = stream.Write(byts)
-	require.NoError(n.t, err)
+func (n *testNetwork) RespondToHighestDecidedInstance(stream network.SyncStream, msg *network.SyncMessage) error {
+	n.highestDecidedReceived = msg.SignedMessages[0]
 	return nil
 }
 
@@ -60,10 +54,11 @@ func (n *testNetwork) ReceivedSyncMsgChan() <-chan *network.SyncChanObj {
 }
 
 type testStorage struct {
+	highestDecided *proto.SignedMessage
 }
 
-func NewTestStorage() *testStorage {
-	return &testStorage{}
+func NewTestStorage(highestDecided *proto.SignedMessage) *testStorage {
+	return &testStorage{highestDecided: highestDecided}
 }
 
 func (s *testStorage) SavePrepared(signedMsg *proto.SignedMessage) {
@@ -83,9 +78,32 @@ func (s *testStorage) SaveHighestDecidedInstance(signedMsg *proto.SignedMessage)
 }
 
 func (s *testStorage) GetHighestDecidedInstance() *proto.SignedMessage {
+	return s.highestDecided
+}
+
+type testSyncStream struct {
+}
+
+func NewTestStream() network.SyncStream {
+	return &testSyncStream{}
+}
+
+func (s *testSyncStream) Read(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (s *testSyncStream) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (s *testSyncStream) Close() error {
 	return nil
 }
 
-func NewStream() core.Stream {
+func (s *testSyncStream) CloseWrite() error {
+	return nil
+}
 
+func (s *testSyncStream) RemotePeer() string {
+	return ""
 }

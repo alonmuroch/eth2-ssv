@@ -4,7 +4,6 @@ import (
 	"github.com/bloxapp/ssv/ibft/proto"
 	"github.com/bloxapp/ssv/network"
 	"github.com/bloxapp/ssv/storage"
-	core "github.com/libp2p/go-libp2p-core"
 	"go.uber.org/zap"
 )
 
@@ -25,10 +24,12 @@ func (s *ReqHandler) Process(msg *network.SyncChanObj) {
 	switch msg.Msg.Type {
 	case network.Sync_GetHighestType:
 		s.handleGetHighestReq(msg.Stream)
+	default:
+		s.logger.Error("sync req handler received un-supported type", zap.Uint64("received type", uint64(msg.Msg.Type)))
 	}
 }
 
-func (s *ReqHandler) handleGetHighestReq(stream core.Stream) {
+func (s *ReqHandler) handleGetHighestReq(stream network.SyncStream) {
 	res := &network.SyncMessage{
 		SignedMessages: []*proto.SignedMessage{s.storage.GetHighestDecidedInstance()},
 		Type:           network.Sync_GetHighestType,
