@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	p2pHost "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/prysmaticlabs/prysm/beacon-chain/p2p/peers"
 	"github.com/prysmaticlabs/prysm/beacon-chain/p2p/peers/scorers"
@@ -238,6 +239,10 @@ func (n *p2pNetwork) listen() {
 			}
 		}
 	}
+}
+
+func (n *p2pNetwork) AllPeers() []peer.ID {
+	return n.peers.All()
 }
 
 func getTopic(topicName string) string {

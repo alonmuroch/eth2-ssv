@@ -1,30 +1,63 @@
 package sync
 
-import "github.com/bloxapp/ssv/network"
+import (
+	"github.com/bloxapp/ssv/ibft/proto"
+	"github.com/bloxapp/ssv/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"sync"
+)
 
 // HistorySync is responsible for syncing and iBFT instance when needed by
 // fetching decided messages from the network
 type HistorySync struct {
-	network network.Network
+	network        network.Network
+	instanceParams *proto.InstanceParams
 }
 
 // NewHistorySync returns a new instance of HistorySync
-func NewHistorySync(network network.Network) *HistorySync {
-	return &HistorySync{network: network}
+func NewHistorySync(network network.Network, instanceParams *proto.InstanceParams) *HistorySync {
+	return &HistorySync{network: network, instanceParams: instanceParams}
 }
 
 // Start the sync
-func (sync *HistorySync) Start() {
+func (s *HistorySync) Start() {
 	panic("implement HistorySync")
 }
 
-// FindHighestInstance returns the highest found instance identifier found by asking the P2P network
-func (sync *HistorySync) FindHighestInstance() []byte {
+// findHighestInstance returns the highest found decided signed message from peers
+func (s *HistorySync) findHighestInstance() (*proto.SignedMessage, error) {
+	// pick up to 4 peers
+	// TODO - why 4? should be set as param?
+	// TODO select peers by quality/ score?
+	usedPeers := s.network.AllPeers()
+	if len(usedPeers) > 4 {
+		usedPeers = usedPeers[:4]
+	}
 
-	return nil
+	// fetch response
+	wg := &sync.WaitGroup{}
+	errors := make([]error, 4)
+	results := make([]*network.Message, 4)
+	for i, p := range usedPeers {
+		go func(index int, peer peer.ID, wg *sync.WaitGroup) {
+			wg.Add(1)
+			res, err := s.network.GetHighestDecidedInstance(peer, &network.SyncMessage{
+				Type: network.Sync_GetHighestType,
+			})
+			errors[index] = err
+			results[index] = res
+			wg.Done()
+		}(i, p, wg)
+	}
+
+	wg.Wait()
+
+	// validate response and find highest decided
+
+	return results, errors
 }
 
 // FetchValidateAndSaveInstances fetches, validates and saves decided messages from the P2P network.
-func (sync *HistorySync) FetchValidateAndSaveInstances(startID []byte, endID []byte) {
+func (s *HistorySync) FetchValidateAndSaveInstances(startID []byte, endID []byte) {
 
 }

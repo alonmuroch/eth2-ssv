@@ -105,7 +105,7 @@ func (n *Local) BroadcastSyncMessage(peers []peer.ID, msg *network.SyncMessage) 
 
 // GetHighestDecidedInstance sends a highest decided request to peers and returns answers.
 // If peer list is nil, broadcasts to all.
-func (n *Local) GetHighestDecidedInstance(peers []peer.ID, msg *network.SyncMessage) (*network.Message, error) {
+func (n *Local) GetHighestDecidedInstance(peer peer.ID, msg *network.SyncMessage) (*network.Message, error) {
 	panic("implement")
 }
 
@@ -121,4 +121,8 @@ func (n *Local) ReceivedSyncMsgChan() <-chan *network.SyncChanObj {
 	c := make(chan *network.SyncChanObj)
 	n.syncC = append(n.syncC, c)
 	return c
+}
+
+func (n *Local) AllPeers() []peer.ID {
+	return []peer.ID{}
 }

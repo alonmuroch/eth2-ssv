@@ -51,11 +51,13 @@ type Network interface {
 
 	// GetHighestDecidedInstance sends a highest decided request to peers and returns answers.
 	// If peer list is nil, broadcasts to all.
-	GetHighestDecidedInstance(peers []peer.ID, msg *SyncMessage) (*Message, error)
+	GetHighestDecidedInstance(peer peer.ID, msg *SyncMessage) (*Message, error)
 
 	// RespondToHighestDecidedInstance responds to a GetHighestDecidedInstance
 	RespondToHighestDecidedInstance(stream SyncStream, msg *SyncMessage) error
 
 	// ReceivedSyncMsgChan returns the channel for sync messages
 	ReceivedSyncMsgChan() <-chan *SyncChanObj
+
+	AllPeers() []peer.ID
 }

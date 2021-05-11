@@ -45,7 +45,7 @@ func (i *ibftImpl) ProcessDecidedMessage(msg *proto.SignedMessage) {
 			i.currentInstance.Stop()
 		}
 		// sync
-		s := sync.NewHistorySync(i.network)
+		s := sync.NewHistorySync(i.network, i.params)
 		go s.Start()
 	}
 }
