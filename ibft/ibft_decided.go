@@ -18,7 +18,10 @@ by calling Decide(λi,− , Qcommit) do
 	send Qcommit to process pj
 */
 func (i *ibftImpl) ProcessDecidedMessage(msg *proto.SignedMessage) {
-	// TODO - validate msg
+	if err := i.params.VerifySignedMessage(msg); err != nil {
+		i.logger.Error("could not verify decided msg", zap.Error(err))
+		return
+	}
 
 	i.logger.Info("received highest decided", zap.Uint64("seq number", msg.Message.SeqNumber), zap.Uint64s("node ids", msg.SignerIds))
 

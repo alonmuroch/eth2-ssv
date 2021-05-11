@@ -54,3 +54,23 @@ func (p *InstanceParams) PubKeysByID(ids []uint64) (PubKeys, error) {
 	}
 	return ret, nil
 }
+
+func (p *InstanceParams) VerifySignedMessage(msg *SignedMessage) error {
+	pks, err := p.PubKeysByID(msg.SignerIds)
+	if err != nil {
+		return err
+	}
+	if len(pks) == 0 {
+		return errors.New("could not find public key")
+	}
+
+	res, err := msg.VerifyAggregatedSig(pks)
+	if err != nil {
+		return err
+	}
+	if !res {
+		return errors.New("could not verify message signature")
+	}
+
+	return nil
+}
