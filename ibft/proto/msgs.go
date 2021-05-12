@@ -53,12 +53,13 @@ func (msg *SignedMessage) VerifySig(pk *bls.PublicKey) (bool, error) {
 	return msg.VerifyAggregatedSig([]*bls.PublicKey{pk})
 }
 
+// VerifyAggregatedSig verifes an aggregated signed message vs provided PKs
 func (msg *SignedMessage) VerifyAggregatedSig(pks []*bls.PublicKey) (bool, error) {
 	if msg.Signature == nil || len(msg.Signature) == 0 {
 		return false, errors.New("message signature is invalid")
 	}
 
-	if pks == nil || len(pks) == 0 {
+	if len(pks) == 0 {
 		return false, errors.New("pks are invalid")
 	}
 

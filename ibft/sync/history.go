@@ -21,6 +21,10 @@ func NewHistorySync(network network.Network, instanceParams *proto.InstanceParam
 
 // Start the sync
 func (s *HistorySync) Start() {
+	_, err := s.findHighestInstance()
+	if err != nil {
+		panic("implement")
+	}
 	panic("implement HistorySync")
 }
 
@@ -39,8 +43,8 @@ func (s *HistorySync) findHighestInstance() (*proto.SignedMessage, error) {
 	errors := make([]error, 4)
 	results := make([]*network.Message, 4)
 	for i, p := range usedPeers {
+		wg.Add(1)
 		go func(index int, peer peer.ID, wg *sync.WaitGroup) {
-			wg.Add(1)
 			res, err := s.network.GetHighestDecidedInstance(peer, &network.SyncMessage{
 				Type: network.Sync_GetHighestType,
 			})
@@ -54,7 +58,7 @@ func (s *HistorySync) findHighestInstance() (*proto.SignedMessage, error) {
 
 	// validate response and find highest decided
 
-	return results, errors
+	return nil, nil
 }
 
 // FetchValidateAndSaveInstances fetches, validates and saves decided messages from the P2P network.

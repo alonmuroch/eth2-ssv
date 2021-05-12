@@ -123,6 +123,7 @@ func (n *Local) ReceivedSyncMsgChan() <-chan *network.SyncChanObj {
 	return c
 }
 
+// AllPeers implementation
 func (n *Local) AllPeers() []peer.ID {
 	return []peer.ID{}
 }
